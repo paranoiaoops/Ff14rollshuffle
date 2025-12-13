@@ -69,8 +69,8 @@ export function RoleAssigner() {
   const [players, setPlayers] = useState<Player[]>(
     Array.from({ length: 8 }, (_, i) => ({
       id: i + 1,
-      name: `プレイヤー${i + 1}`,
-      preferredRoles: [],
+      name: '',
+      preferredRoles: ['MainTank', 'SubTank', 'PureHealer', 'BarrierHealer', 'Melee1', 'Melee2', 'Ranged', 'Caster'],
       assignedRole: null,
     }))
   );
@@ -125,6 +125,47 @@ export function RoleAssigner() {
     setError('');
   };
 
+  const selectTankRoles = (playerId: number) => {
+    setPlayers(players.map(p => {
+      if (p.id === playerId) {
+        const newRoles = new Set(p.preferredRoles);
+        newRoles.add('MainTank');
+        newRoles.add('SubTank');
+        return { ...p, preferredRoles: Array.from(newRoles) };
+      }
+      return p;
+    }));
+    setError('');
+  };
+
+  const selectHealerRoles = (playerId: number) => {
+    setPlayers(players.map(p => {
+      if (p.id === playerId) {
+        const newRoles = new Set(p.preferredRoles);
+        newRoles.add('PureHealer');
+        newRoles.add('BarrierHealer');
+        return { ...p, preferredRoles: Array.from(newRoles) };
+      }
+      return p;
+    }));
+    setError('');
+  };
+
+  const selectDPSRoles = (playerId: number) => {
+    setPlayers(players.map(p => {
+      if (p.id === playerId) {
+        const newRoles = new Set(p.preferredRoles);
+        newRoles.add('Melee1');
+        newRoles.add('Melee2');
+        newRoles.add('Ranged');
+        newRoles.add('Caster');
+        return { ...p, preferredRoles: Array.from(newRoles) };
+      }
+      return p;
+    }));
+    setError('');
+  };
+
   const assignRoles = () => {
     // バリデーション
     const playersWithRoles = players.filter(p => p.preferredRoles.length > 0);
@@ -146,7 +187,13 @@ export function RoleAssigner() {
       return;
     }
 
-    setPlayers(result.players);
+    // 名前が空のプレイヤーに番号を設定
+    const playersWithNames = result.players.map(p => ({
+      ...p,
+      name: p.name.trim() === '' ? `${p.id}` : p.name
+    }));
+
+    setPlayers(playersWithNames);
     setError('');
   };
 
@@ -223,6 +270,15 @@ export function RoleAssigner() {
                 className="bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 focus:border-purple-500 focus:outline-none flex-1"
                 placeholder="プレイヤー名"
               />
+              {player.assignedRole && (
+                <>
+                  <div className={`${ROLE_COLORS[player.assignedRole]} text-white px-4 py-2 rounded-lg flex items-center gap-2`}>
+                    {React.createElement(ROLE_ICONS[player.assignedRole], { className: 'w-4 h-4' })}
+                    <span>{ROLE_LABELS[player.assignedRole]}</span>
+                  </div>
+                  <div className="w-px h-8 bg-slate-600"></div>
+                </>
+              )}
               <button
                 onClick={() => selectAllRoles(player.id)}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm transition-colors"
@@ -235,12 +291,24 @@ export function RoleAssigner() {
               >
                 クリア
               </button>
-              {player.assignedRole && (
-                <div className={`${ROLE_COLORS[player.assignedRole]} text-white px-4 py-2 rounded-lg flex items-center gap-2`}>
-                  {React.createElement(ROLE_ICONS[player.assignedRole], { className: 'w-4 h-4' })}
-                  <span>{ROLE_LABELS[player.assignedRole]}</span>
-                </div>
-              )}
+              <button
+                onClick={() => selectTankRoles(player.id)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors"
+              >
+                タンク選択
+              </button>
+              <button
+                onClick={() => selectHealerRoles(player.id)}
+                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm transition-colors"
+              >
+                ヒーラー選択
+              </button>
+              <button
+                onClick={() => selectDPSRoles(player.id)}
+                className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm transition-colors"
+              >
+                DPS選択
+              </button>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {(['MainTank', 'SubTank', 'PureHealer', 'BarrierHealer', 'Melee1', 'Melee2', 'Ranged', 'Caster'] as Role[]).map(role => {
