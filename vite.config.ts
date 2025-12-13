@@ -49,7 +49,7 @@
         '@': path.resolve(__dirname, './src'),
       },
     },
-    base: './Ff14rollshuffle',
+    base: './',
     build: {
       target: 'esnext',
       outDir: 'build',
