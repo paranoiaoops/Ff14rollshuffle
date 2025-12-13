@@ -208,6 +208,40 @@ export function RoleAssigner() {
 
   return (
     <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg shadow-xl p-6 border border-purple-500/20">
+      {/* ロール構成設定 */}
+      <div className="mb-6 p-4 bg-slate-900/50 rounded-lg">
+        <h2 className="text-white mb-4 flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          ロール構成
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {(['MainTank', 'SubTank', 'PureHealer', 'BarrierHealer', 'Melee1', 'Melee2', 'Ranged', 'Caster'] as Role[]).map(role => {
+            const Icon = ROLE_ICONS[role];
+            return (
+              <div key={role} className="flex flex-col gap-2">
+                <label className={`flex items-center gap-2 ${ROLE_TEXT_COLORS[role]}`}>
+                  <Icon className="w-4 h-4" />
+                  {ROLE_LABELS[role]}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="8"
+                  value={roleConfig[role]}
+                  onChange={(e) => setRoleConfig({ ...roleConfig, [role]: parseInt(e.target.value) || 0 })}
+                  className="bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 focus:border-purple-500 focus:outline-none"
+                />
+                {hasAssignments && (
+                  <span className={`text-sm ${currentCounts[role] === roleConfig[role] ? 'text-green-400' : 'text-yellow-400'}`}>
+                    現在: {currentCounts[role]} / {roleConfig[role]}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* プレイヤーリスト */}
       <div className="space-y-3 mb-6">
         {players.map((player) => (
@@ -279,34 +313,6 @@ export function RoleAssigner() {
         <div className="mb-4 p-3 bg-green-500/20 border border-green-500 rounded-lg flex items-center gap-2 text-green-300">
           <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
           <span>ロールの割り当てが完了しました！</span>
-        </div>
-      )}
-
-      {/* 抽選結果一覧 */}
-      {hasAssignments && (
-        <div className="mb-6 bg-slate-900/50 rounded-lg p-6 border border-purple-500/30">
-          <h3 className="text-xl text-purple-300 mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            抽選結果
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            {(['MainTank', 'SubTank', 'PureHealer', 'BarrierHealer', 'Melee1', 'Melee2', 'Ranged', 'Caster'] as Role[]).map(role => {
-              const player = players.find(p => p.assignedRole === role);
-              const Icon = ROLE_ICONS[role];
-              return (
-                <div
-                  key={role}
-                  className={`${ROLE_COLORS[role]} rounded-lg p-4 flex items-center gap-3`}
-                >
-                  <Icon className="w-6 h-6 text-white" />
-                  <div className="flex-1">
-                    <div className="text-white/80 text-sm">{ROLE_LABELS[role]}</div>
-                    <div className="text-white">{player?.name || '未割当'}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 
