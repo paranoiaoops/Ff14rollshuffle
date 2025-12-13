@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 // 例: https://username.github.io/repository-name/ の場合は '/repository-name/'
 export default defineConfig({
   plugins: [react()],
-  base: './Ff14rollshuffle', // 相対パスを使用（任意のパスで動作）
+  base: './', // 相対パスを使用（任意のパスで動作）
   build: {
     outDir: 'dist',
   },
