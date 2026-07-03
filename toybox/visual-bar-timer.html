@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ビジュアルバータイマー</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1c1c1e;
+    --surface: #2a2a2c;
+    --surface2: #3a3a3c;
+    --bar-active: #e8341c;
+    --bar-empty: #2d2d2d;
+    --bar-warn: #f5a623;
+    --text-primary: #f5f5f5;
+    --text-secondary: #8e8e93;
+    --accent: #e8341c;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  .container {
+    width: min(480px, 96vw);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* ─── ブランドラベル ─── */
+  .brand {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+    font-weight: 500;
+  }
+
+  /* ─── 時間表示 ─── */
+  .time-display {
+    font-size: clamp(72px, 18vw, 96px);
+    font-weight: 200;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    margin-bottom: 8px;
+    transition: color 0.3s;
+    font-feature-settings: "tnum";
+  }
+  .time-display.warn { color: var(--bar-warn); }
+  .time-display.urgent { color: var(--bar-active); }
+
+  .time-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+
+  /* ─── バー本体 ─── */
+  .bar-wrap {
+    width: 100%;
+    position: relative;
+    margin-bottom: 10px;
+  }
+
+  /* 目盛り */
+  .ticks {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2px;
+    margin-bottom: 6px;
+  }
+  .tick {
+    width: 1px;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 1px;
+  }
+  .tick.major {
+    height: 10px;
+    background: var(--text-secondary);
+    opacity: 0.5;
+  }
+
+  /* バートラック */
+  .bar-track {
+    width: 100%;
+    height: 36px;
+    background: var(--bar-empty);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--bar-active);
+    transition: width 0.25s linear, background 0.4s;
+    position: relative;
+    transform-origin: right center;
+  }
+
+  /* バー右端のグロー */
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 24px;
+    height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.18));
+    border-radius: 0 4px 4px 0;
+    pointer-events: none;
+  }
+
+  .bar-fill.warn { background: var(--bar-warn); }
+  .bar-fill.urgent { background: var(--bar-active); }
+
+  /* バー下目盛り */
+  .ticks-bottom {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2px;
+    margin-top: 6px;
+    margin-bottom: 4px;
+  }
+
+  /* 残り時間ラベル（バー下） */
+  .bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-secondary);
+    padding: 0 2px;
+    margin-bottom: 36px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── 設定パネル ─── */
+  .preset-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .preset-btn {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+    touch-action: manipulation;
+  }
+  .preset-btn:active, .preset-btn.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* カスタム入力 */
+  .custom-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .time-input {
+    width: 64px;
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 20px;
+    text-align: center;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .time-input:focus { border-color: var(--accent); }
+
+  .colon {
+    font-size: 20px;
+    color: var(--text-secondary);
+  }
+
+  .set-btn {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, color 0.15s;
+    touch-action: manipulation;
+  }
+  .set-btn:active { background: var(--surface2); color: var(--text-primary); }
+
+  /* ─── メインボタン ─── */
+  .control-row {
+    display: flex;
+    gap: 14px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-main {
+    flex: 1;
+    max-width: 180px;
+    height: 56px;
+    border-radius: 14px;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.02em;
+    transition: opacity 0.15s, transform 0.1s;
+    touch-action: manipulation;
+  }
+  .btn-main:active { opacity: 0.8; transform: scale(0.97); }
+
+  .btn-start {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-pause {
+    background: var(--bar-warn);
+    color: #fff;
+  }
+  .btn-reset {
+    background: var(--surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--surface2);
+  }
+
+  /* ─── 通知トグル ─── */
+  .notify-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  .toggle-btn.on {
+    background: var(--surface2);
+    border-color: #48484a;
+    color: var(--text-primary);
+  }
+  .toggle-btn .toggle-icon { font-size: 15px; line-height: 1; }
+  .toggle-btn .toggle-dot {
+    width: 28px; height: 16px;
+    background: #48484a;
+    border-radius: 8px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle-btn.on .toggle-dot { background: #30d158; }
+  .toggle-btn .toggle-dot::after {
+    content: '';
+    position: absolute;
+    width: 12px; height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle-btn.on .toggle-dot::after { transform: translateX(12px); }
+
+  /* ─── Wake Lock 状態表示 ─── */
+  .wakelock-status {
+    margin-top: 28px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .wakelock-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--surface2);
+    transition: background 0.3s;
+  }
+  .wakelock-dot.active { background: #30d158; }
+
+  /* ─── 完了オーバーレイ ─── */
+  .done-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(232, 52, 28, 0.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+    z-index: 100;
+  }
+  .done-overlay.show { opacity: 1; pointer-events: all; }
+  .done-text {
+    font-size: 48px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    color: #fff;
+  }
+  .done-sub {
+    font-size: 14px;
+    color: rgba(255,255,255,0.75);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .done-close {
+    margin-top: 16px;
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.35);
+    color: #fff;
+    border-radius: 12px;
+    padding: 12px 32px;
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    touch-action: manipulation;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="brand">Visual Bar Timer</div>
+
+  <div class="time-display" id="timeDisplay">05:00</div>
+  <div class="time-label" id="timeLabel">残り時間</div>
+
+  <!-- バー -->
+  <div class="bar-wrap">
+    <div class="ticks" id="ticksTop"></div>
+    <div class="bar-track">
+      <div class="bar-fill" id="barFill"></div>
+    </div>
+    <div class="ticks-bottom" id="ticksBottom"></div>
+    <div class="bar-labels">
+      <span id="labelLeft">—</span>
+      <span id="labelRight">0:00</span>
+    </div>
+  </div>
+
+  <!-- プリセット -->
+  <div class="preset-row" id="presetRow">
+    <button class="preset-btn" data-min="1">1分</button>
+    <button class="preset-btn selected" data-min="5">5分</button>
+    <button class="preset-btn" data-min="10">10分</button>
+    <button class="preset-btn" data-min="15">15分</button>
+    <button class="preset-btn" data-min="25">25分</button>
+    <button class="preset-btn" data-min="30">30分</button>
+    <button class="preset-btn" data-min="60">60分</button>
+  </div>
+
+  <!-- カスタム -->
+  <div class="custom-row">
+    <input class="time-input" id="inputMin" type="number" min="0" max="99" value="5" placeholder="分">
+    <span class="colon">:</span>
+    <input class="time-input" id="inputSec" type="number" min="0" max="59" value="0" placeholder="秒">
+    <button class="set-btn" id="btnSet">セット</button>
+  </div>
+
+  <!-- コントロール -->
+  <div class="control-row">
+    <button class="btn-main btn-start" id="btnStart">スタート</button>
+    <button class="btn-main btn-reset" id="btnReset">リセット</button>
+  </div>
+
+  <!-- 音・バイブ トグル -->
+  <div class="notify-row">
+    <button class="toggle-btn on" id="btnSound">
+      <span class="toggle-icon">🔔</span>
+      <span>音</span>
+      <div class="toggle-dot"></div>
+    </button>
+    <button class="toggle-btn on" id="btnVibrate">
+      <span class="toggle-icon">📳</span>
+      <span>バイブ</span>
+      <div class="toggle-dot"></div>
+    </button>
+  </div>
+
+  <div class="wakelock-status">
+    <div class="wakelock-dot" id="wakeDot"></div>
+    <span id="wakeLabel">スリープ制御: 待機中</span>
+  </div>
+</div>
+
+<!-- 完了オーバーレイ -->
+<div class="done-overlay" id="doneOverlay">
+  <div class="done-text">時間です！</div>
+  <div class="done-sub">Timer Complete</div>
+  <button class="done-close" id="doneClose">閉じる</button>
+</div>
+
+<script>
+(() => {
+  // ─── 状態 ───
+  let totalSec = 5 * 60;
+  let remainSec = 5 * 60;
+  let running = false;
+  let intervalId = null;
+  let wakeLock = null;
+  let audioCtx = null;
+  let soundOn = true;
+  let vibrateOn = true;
+
+  // ─── AudioContext（iOS対策：ユーザー操作時に初期化）───
+  function unlockAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // iOSはsuspended状態で始まるのでresumeが必要
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  // ピピピッ（電子ビープ×3回）
+  function playBeep() {
+    if (!soundOn || !audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const times = [0, 0.18, 0.36];
+    times.forEach(offset => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'square';
+      osc.frequency.value = 880;
+      const t = audioCtx.currentTime + offset;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.01);
+      gain.gain.setValueAtTime(0.35, t + 0.10);
+      gain.gain.linearRampToValueAtTime(0, t + 0.14);
+      osc.start(t);
+      osc.stop(t + 0.15);
+    });
+  }
+
+  // ─── 要素 ───
+  const timeDisplay = document.getElementById('timeDisplay');
+  const timeLabel   = document.getElementById('timeLabel');
+  const barFill     = document.getElementById('barFill');
+  const btnStart    = document.getElementById('btnStart');
+  const btnReset    = document.getElementById('btnReset');
+  const btnSet      = document.getElementById('btnSet');
+  const inputMin    = document.getElementById('inputMin');
+  const inputSec    = document.getElementById('inputSec');
+  const doneOverlay = document.getElementById('doneOverlay');
+  const doneClose   = document.getElementById('doneClose');
+  const wakeDot     = document.getElementById('wakeDot');
+  const wakeLabel   = document.getElementById('wakeLabel');
+  const presetRow   = document.getElementById('presetRow');
+  const labelLeft   = document.getElementById('labelLeft');
+  const labelRight  = document.getElementById('labelRight');
+  const btnSound    = document.getElementById('btnSound');
+  const btnVibrate  = document.getElementById('btnVibrate');
+
+  // ─── 目盛り生成 ───
+  function buildTicks() {
+    const tops = document.getElementById('ticksTop');
+    const bots = document.getElementById('ticksBottom');
+    tops.innerHTML = ''; bots.innerHTML = '';
+    const N = 40;
+    for (let i = 0; i <= N; i++) {
+      const major = i % 10 === 0;
+      ['tops', 'bots'].forEach((_, idx) => {
+        const d = document.createElement('div');
+        d.className = 'tick' + (major ? ' major' : '');
+        (idx === 0 ? tops : bots).appendChild(d);
+      });
+    }
+  }
+  buildTicks();
+
+  // ─── 書式 ───
+  function fmt(s) {
+    const m = Math.floor(s / 60);
+    const ss = s % 60;
+    return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  }
+
+  // ─── UI更新 ───
+  function updateUI() {
+    const pct = totalSec > 0 ? (remainSec / totalSec) * 100 : 0;
+    barFill.style.width = pct + '%';
+
+    // 色の変化
+    const warn   = pct <= 30 && pct > 10;
+    const urgent = pct <= 10;
+    barFill.classList.toggle('warn', warn);
+    barFill.classList.toggle('urgent', urgent);
+    timeDisplay.classList.toggle('warn', warn);
+    timeDisplay.classList.toggle('urgent', urgent);
+
+    timeDisplay.textContent = fmt(remainSec);
+    timeLabel.textContent = running ? '残り時間' : (remainSec === totalSec ? '設定時間' : '一時停止中');
+
+    // バー下ラベル
+    const elapsed = totalSec - remainSec;
+    labelLeft.textContent = elapsed > 0 ? `経過 ${fmt(elapsed)}` : '—';
+    labelRight.textContent = fmt(remainSec);
+  }
+
+  // ─── Wake Lock ───
+  async function acquireWakeLock() {
+    if (!('wakeLock' in navigator)) {
+      wakeLabel.textContent = 'スリープ制御: 非対応ブラウザ';
+      return;
+    }
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeDot.classList.add('active');
+      wakeLabel.textContent = 'スリープ制御: ON（自動ロック停止中）';
+      wakeLock.addEventListener('release', () => {
+        wakeDot.classList.remove('active');
+        wakeLabel.textContent = 'スリープ制御: 解除済み';
+      });
+    } catch (e) {
+      wakeLabel.textContent = 'スリープ制御: 取得失敗';
+    }
+  }
+
+  async function releaseWakeLock() {
+    if (wakeLock) {
+      try { await wakeLock.release(); } catch (_) {}
+      wakeLock = null;
+    }
+    wakeDot.classList.remove('active');
+    wakeLabel.textContent = 'スリープ制御: 解除済み';
+  }
+
+  // タブ非表示時も再取得
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && running && !wakeLock) {
+      await acquireWakeLock();
+    }
+  });
+
+  // ─── タイマー制御 ───
+  function startTimer() {
+    if (remainSec <= 0) return;
+    unlockAudio(); // iOS対策：ユーザー操作のタイミングでAudioContextを解放
+    running = true;
+    btnStart.textContent = '一時停止';
+    btnStart.classList.replace('btn-start', 'btn-pause');
+    acquireWakeLock();
+
+    intervalId = setInterval(() => {
+      remainSec--;
+      updateUI();
+      if (remainSec <= 0) {
+        clearInterval(intervalId);
+        running = false;
+        onComplete();
+      }
+    }, 1000);
+  }
+
+  function pauseTimer() {
+    clearInterval(intervalId);
+    running = false;
+    btnStart.textContent = '再開';
+    btnStart.classList.replace('btn-pause', 'btn-start');
+    releaseWakeLock();
+    updateUI();
+  }
+
+  function resetTimer() {
+    clearInterval(intervalId);
+    running = false;
+    remainSec = totalSec;
+    btnStart.textContent = 'スタート';
+    btnStart.classList.remove('btn-pause');
+    btnStart.classList.add('btn-start');
+    releaseWakeLock();
+    updateUI();
+  }
+
+  function onComplete() {
+    releaseWakeLock();
+    btnStart.textContent = 'スタート';
+    btnStart.classList.replace('btn-pause', 'btn-start');
+    doneOverlay.classList.add('show');
+    // ビープ音（ピピピッ）
+    playBeep();
+    // バイブレーション（対応端末）
+    if (vibrateOn && 'vibrate' in navigator) {
+      navigator.vibrate([400, 200, 400, 200, 800]);
+    }
+    updateUI();
+  }
+
+  // ─── 時間セット ───
+  function setTime(sec) {
+    if (running) pauseTimer();
+    totalSec  = sec;
+    remainSec = sec;
+    updateUI();
+    syncInputs();
+  }
+
+  function syncInputs() {
+    inputMin.value = Math.floor(totalSec / 60);
+    inputSec.value = totalSec % 60;
+  }
+
+  // ─── イベント ───
+  btnStart.addEventListener('click', () => {
+    if (running) pauseTimer(); else startTimer();
+  });
+
+  btnReset.addEventListener('click', () => resetTimer());
+
+  btnSet.addEventListener('click', () => {
+    const m = Math.max(0, Math.min(99, parseInt(inputMin.value) || 0));
+    const s = Math.max(0, Math.min(59, parseInt(inputSec.value) || 0));
+    setTime(m * 60 + s);
+    presetRow.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
+  });
+
+  // プリセット
+  presetRow.addEventListener('click', e => {
+    const btn = e.target.closest('.preset-btn');
+    if (!btn) return;
+    presetRow.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    setTime(parseInt(btn.dataset.min) * 60);
+  });
+
+  // Enterキー
+  [inputMin, inputSec].forEach(el => {
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') btnSet.click(); });
+  });
+
+  // 完了閉じる
+  doneClose.addEventListener('click', () => {
+    doneOverlay.classList.remove('show');
+    resetTimer();
+  });
+
+  // ─── 音・バイブ トグル ───
+  btnSound.addEventListener('click', () => {
+    soundOn = !soundOn;
+    btnSound.classList.toggle('on', soundOn);
+    // OFFのときはアイコンも変える
+    btnSound.querySelector('.toggle-icon').textContent = soundOn ? '🔔' : '🔕';
+    // 音を有効にした瞬間にAudioContextを解放（iOS対策）
+    if (soundOn) unlockAudio();
+  });
+
+  btnVibrate.addEventListener('click', () => {
+    vibrateOn = !vibrateOn;
+    btnVibrate.classList.toggle('on', vibrateOn);
+    btnVibrate.querySelector('.toggle-icon').textContent = vibrateOn ? '📳' : '📴';
+  });
+
+  // ─── 初期化 ───
+  updateUI();
+})();
+</script>
+</body>
+</html>

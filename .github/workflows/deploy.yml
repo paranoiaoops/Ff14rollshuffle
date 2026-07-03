@@ -30,6 +30,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Copy toybox
+        run: cp -r toybox/. build/toybox/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SONIC RACING CROSSWORLDS — コースルーレット</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a12;
+    --panel: #12121e;
+    --border: #1e1e30;
+    --sonic-blue: #00aaff;
+    --sonic-gold: #ffcc00;
+    --cross-purple: #9b59f7;
+    --text: #e8e8f0;
+    --muted: #6a6a8a;
+    --danger: #ff4466;
+    --success: #00ffaa;
+    --ring-glow: rgba(0, 170, 255, 0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated ring background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(0,170,255,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    animation: pulse 4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1); } 50% { opacity: 1; transform: translate(-50%,-50%) scale(1.1); } }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 32px 0 24px;
+  }
+  .logo-eyebrow {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 6px;
+    color: var(--sonic-blue);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(22px, 5vw, 38px);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff 30%, var(--sonic-blue) 70%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  /* Tab selector */
+  .mode-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 28px 0 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px;
+  }
+  .tab {
+    flex: 1;
+    padding: 10px 8px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.2s;
+    background: transparent;
+    color: var(--muted);
+  }
+  .tab.active {
+    background: var(--sonic-blue);
+    color: #000;
+    box-shadow: 0 0 16px rgba(0,170,255,0.5);
+  }
+  .tab:not(.active):hover { color: var(--text); background: var(--border); }
+
+  /* ROULETTE area */
+  .roulette-area {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px 24px;
+    text-align: center;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .roulette-area::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,170,255,0.03), transparent 60%);
+    pointer-events: none;
+  }
+
+  .result-ring {
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 24px;
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+  .result-ring.spinning {
+    border-color: var(--sonic-blue);
+    box-shadow: 0 0 40px rgba(0,170,255,0.4), inset 0 0 20px rgba(0,170,255,0.1);
+    animation: ring-spin 0.5s linear infinite;
+  }
+  .result-ring.done {
+    border-color: var(--sonic-gold);
+    box-shadow: 0 0 40px rgba(255,204,0,0.4);
+    animation: ring-pop 0.4s ease-out;
+  }
+  @keyframes ring-spin {
+    0% { box-shadow: 0 0 40px rgba(0,170,255,0.4), inset 0 0 20px rgba(0,170,255,0.1); }
+    50% { box-shadow: 0 0 60px rgba(0,170,255,0.8), inset 0 0 30px rgba(0,170,255,0.2); }
+    100% { box-shadow: 0 0 40px rgba(0,170,255,0.4), inset 0 0 20px rgba(0,170,255,0.1); }
+  }
+  @keyframes ring-pop {
+    0% { transform: scale(0.9); } 60% { transform: scale(1.05); } 100% { transform: scale(1); }
+  }
+
+  .result-inner {
+    padding: 16px;
+    width: 100%;
+  }
+  .result-course-type {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .type-main { color: var(--sonic-blue); }
+  .type-cross { color: var(--cross-purple); }
+  .type-empty { color: var(--muted); }
+
+  .result-course-name {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(13px, 3vw, 18px);
+    font-weight: 700;
+    line-height: 1.2;
+    color: #fff;
+    transition: opacity 0.1s;
+  }
+  .result-course-origin {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .result-gp {
+    margin-top: 4px;
+    font-size: 10px;
+    color: var(--sonic-gold);
+    letter-spacing: 1px;
+  }
+
+  .spin-btn {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 16px 48px;
+    border: none;
+    border-radius: 40px;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--sonic-blue), #0066cc);
+    color: #fff;
+    box-shadow: 0 4px 24px rgba(0,170,255,0.4);
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .spin-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,170,255,0.6); }
+  .spin-btn:active { transform: translateY(0); }
+  .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .spin-btn.spinning {
+    animation: btn-pulse 0.5s ease-in-out infinite;
+  }
+  @keyframes btn-pulse { 0%,100% { box-shadow: 0 4px 24px rgba(0,170,255,0.4); } 50% { box-shadow: 0 4px 40px rgba(0,170,255,0.8); } }
+
+  .mode-info {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Course list / settings */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .count-badge {
+    font-size: 11px;
+    color: var(--sonic-blue);
+    background: rgba(0,170,255,0.1);
+    border: 1px solid rgba(0,170,255,0.3);
+    border-radius: 20px;
+    padding: 2px 10px;
+  }
+
+  .course-group {
+    margin-bottom: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+  .group-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-main { background: var(--sonic-blue); }
+  .dot-cross { background: var(--cross-purple); }
+  .group-name {
+    font-size: 12px;
+    font-weight: 700;
+    flex: 1;
+  }
+  .group-toggle-all {
+    font-size: 10px;
+    color: var(--sonic-blue);
+    cursor: pointer;
+    padding: 2px 8px;
+    border: 1px solid rgba(0,170,255,0.3);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--sonic-blue);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .group-toggle-all:hover { background: rgba(0,170,255,0.1); }
+
+  .course-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+  @media (max-width: 480px) { .course-list { grid-template-columns: 1fr; } }
+
+  .course-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--panel);
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+  }
+  .course-item:hover { background: rgba(255,255,255,0.03); }
+  .course-item.excluded { opacity: 0.4; }
+
+  .course-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    background: transparent;
+  }
+  .course-item:not(.excluded) .course-check {
+    border-color: var(--sonic-blue);
+    background: rgba(0,170,255,0.1);
+  }
+  .course-item:not(.excluded) .course-check::after {
+    content: '✓';
+    font-size: 11px;
+    color: var(--sonic-blue);
+  }
+
+  .course-info { flex: 1; min-width: 0; }
+  .course-name { font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .course-origin { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Bottom bar */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(10,10,18,0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 100;
+  }
+  .warning-text {
+    font-size: 11px;
+    color: var(--danger);
+    display: none;
+  }
+
+  /* History */
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+  }
+  .history-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    width: 20px;
+  }
+  .history-name { flex: 1; font-weight: 700; }
+  .history-type { font-size: 10px; }
+  .history-clear {
+    font-size: 10px;
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .history-clear:hover { color: var(--danger); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo-eyebrow">SEGA</div>
+    <h1>CROSSWORLDS<br>ROULETTE</h1>
+    <div class="subtitle">今日走るコースをランダムで決める</div>
+  </header>
+
+  <!-- Mode tabs -->
+  <div class="mode-tabs">
+    <button class="tab active" onclick="setMode('all')" id="tab-all">🎲 全コース</button>
+    <button class="tab" onclick="setMode('main')" id="tab-main">🏁 メインのみ</button>
+    <button class="tab" onclick="setMode('cross')" id="tab-cross">🌀 クロスワールドのみ</button>
+  </div>
+
+  <!-- Roulette -->
+  <div class="roulette-area">
+    <div class="result-ring" id="result-ring">
+      <div class="result-inner">
+        <div class="result-course-type type-empty" id="result-type">— START —</div>
+        <div class="result-course-name" id="result-name">ボタンを押して<br>コースを決定！</div>
+        <div class="result-course-origin" id="result-origin"></div>
+        <div class="result-gp" id="result-gp"></div>
+      </div>
+    </div>
+    <button class="spin-btn" id="spin-btn" onclick="spin()">▶ SPIN</button>
+    <div class="mode-info" id="mode-info">全コース対象（除外コースを除く）</div>
+  </div>
+
+  <!-- History -->
+  <div id="history-section" style="margin-bottom: 20px; display:none;">
+    <div class="section-header">
+      <span class="section-title">🕐 本日の履歴</span>
+      <span class="history-clear" onclick="clearHistory()">クリア</span>
+    </div>
+    <div class="history-list" id="history-list"></div>
+  </div>
+
+  <!-- Course settings -->
+  <div class="section-header">
+    <span class="section-title">⚙ コース設定（除外管理）</span>
+    <span class="count-badge" id="active-count">-- / -- コース有効</span>
+  </div>
+
+  <div id="course-groups"></div>
+
+  <div style="height: 64px;"></div>
+</div>
+
+<div class="bottom-bar">
+  <span class="warning-text" id="warn-text">⚠ 有効なコースがありません</span>
+</div>
+
+<script>
+// ============================================================
+// COURSE DATA — コースを追加する場合はここに追記するだけ
+// ============================================================
+const COURSES = [
+  // ── メインコース ── ドンパグランプリ
+  { id: 'e-stadium',         name: 'E-スタジアム',       origin: 'ソニックレーシングCW',       gp: 'ドンパグランプリ', type: 'main' },
+  { id: 'rainbow-garden',    name: 'レインボーガーデン',  origin: 'ソニックレーシングCW',       gp: 'ドンパグランプリ', type: 'main' },
+  { id: 'water-palace',      name: 'ウォーターパレス',   origin: 'ソニックレーシングCW',       gp: 'ドンパグランプリ', type: 'main' },
+  // ── ウィスプグランプリ
+  { id: 'metal-harbor',      name: 'メタルハーバー',     origin: 'ソニックアドベンチャー2',    gp: 'ウィスプグランプリ', type: 'main' },
+  { id: 'sand-road',         name: 'サンドロード',       origin: 'ソニック3＆ナックルズ',      gp: 'ウィスプグランプリ', type: 'main' },
+  { id: 'colorful-mall',     name: 'カラフルなモール',   origin: 'ソニックレーシングCW',       gp: 'ウィスプグランプリ', type: 'main' },
+  // ── ブーグランプリ
+  { id: 'mystic-jungle',     name: 'ミスティックジャングル', origin: 'ソニックフォーシーズ',   gp: 'ブーグランプリ', type: 'main' },
+  { id: 'apotos',            name: 'アポトス',           origin: 'ソニックアンリシード',       gp: 'ブーグランプリ', type: 'main' },
+  { id: 'wonder-museum',     name: 'ワンダーミュージアム', origin: 'ソニックレーシングCW',     gp: 'ブーグランプリ', type: 'main' },
+  // ── カボチャグランプリ
+  { id: 'crystal-mine',      name: 'クリスタルマイン',   origin: 'ソニックレーシングCW',       gp: 'カボチャグランプリ', type: 'main' },
+  { id: 'ocean-view',        name: 'オーシャンビュー',   origin: 'ソニックヒーローズ',         gp: 'カボチャグランプリ', type: 'main' },
+  { id: 'pumpkin-mansion',   name: 'パンプキンマンション', origin: 'ソニックレーシングCW',     gp: 'カボチャグランプリ', type: 'main' },
+  // ── コーラルグランプリ
+  { id: 'urban-canyon',      name: 'アーバンキャニオン', origin: 'ソニックレーシングCW',       gp: 'コーラルグランプリ', type: 'main' },
+  { id: 'market-street',     name: 'マーケットストリート', origin: 'ソニックアンリシード',     gp: 'コーラルグランプリ', type: 'main' },
+  { id: 'coral-town',        name: 'コーラルタウン',     origin: 'ソニックレーシングCW',       gp: 'コーラルグランプリ', type: 'main' },
+  // ── チャオグランプリ
+  { id: 'blizzard-valley',   name: 'ブリザードバレー',   origin: 'ソニックレーシングCW',       gp: 'チャオグランプリ', type: 'main' },
+  { id: 'radical-highway',   name: 'ラジカルハイウェイ', origin: 'ソニックアドベンチャー2',    gp: 'チャオグランプリ', type: 'main' },
+  { id: 'chao-park',         name: 'チャオパーク',       origin: 'ソニックレーシングCW',       gp: 'チャオグランプリ', type: 'main' },
+  // ── エッググランプリ
+  { id: 'donpa-factory',     name: 'ドンパファクトリー',  origin: 'ソニックレーシングCW',       gp: 'エッググランプリ', type: 'main' },
+  { id: 'aqua-forest',       name: 'アクアフォレスト',   origin: 'ソニックレーシングCW',       gp: 'エッググランプリ', type: 'main' },
+  { id: 'eggman-expo',       name: 'エッグマンエキスポ', origin: 'ソニックレーシングCW',       gp: 'エッググランプリ', type: 'main' },
+  // ── 秘密のグランプリ
+  { id: 'chronos-island',    name: 'クロノスアイランド', origin: 'ソニックフロンティア',       gp: '秘密のグランプリ', type: 'main' },
+  { id: 'northstar-islands', name: 'ノーススター諸島',   origin: 'ソニックスーパースターズ',   gp: '秘密のグランプリ', type: 'main' },
+  { id: 'white-space',       name: 'ホワイトスペース',   origin: 'ソニック×シャドウGENS',     gp: '秘密のグランプリ', type: 'main' },
+  // ── クロスオーバーグランプリ（DLC）
+  { id: 'minecraft-world',   name: 'マインクラフトワールド', origin: 'Minecraft',             gp: 'クロスオーバー1', type: 'main', dlc: true },
+  { id: 'bikini-city',       name: 'ビキニシティ',       origin: 'スポンジ・ボブ',             gp: 'クロスオーバー1', type: 'main', dlc: true },
+  { id: 'pac-village',       name: 'PAC-ビレッジ＆メイズ', origin: 'パックマン',              gp: 'クロスオーバー1', type: 'main', dlc: true },
+  { id: 'wily-castle',       name: 'ワイリーキャッスル',         origin: 'ロックマン',                 gp: 'クロスオーバー2', type: 'main', dlc: true },
+
+  // ── クロスワールド
+  { id: 'cw-sky-road',       name: 'スカイロード',        origin: 'ソニックアンリシード',      gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-roulette-road',  name: 'ルーレットロード',    origin: 'ソニックヒーローズ',        gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-kraken-bay',     name: 'クラーケンベイ',      origin: 'ソニックと秘密のリング',    gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-golden-temple',  name: 'ゴールデンテンプル',  origin: 'ソニックレーシングCW',      gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-magma-planet',   name: 'マグマプラネット',    origin: 'ギャラクシーフォース2',     gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-hidden-world',   name: '隠された世界',        origin: 'ソニックロストワールド',    gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-steampunk-city', name: 'スチームパンクシティ', origin: 'ソニックレーシングCW',     gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-dragon-road',    name: 'ドラゴンロード',       origin: 'ソニックアンリシード',     gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-holoska',        name: 'ホロスカ',             origin: 'ソニックアンリシード',     gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-galaxy-parade',  name: '銀河パレード',         origin: 'ソニックカラーズ',         gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-dino-jungle',    name: 'ディノソリアンジャングル', origin: 'ソニックと秘密のリング', gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-sweet-mountain', name: 'スイートマウンテン',  origin: 'ソニックカラーズ',          gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-white-cave',     name: 'ホワイトケイブ',       origin: 'ソニックライダーズ',       gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-cyberspace',     name: 'サイバースペース',     origin: 'ソニックフロンティア',     gp: 'クロスワールド', type: 'cross' },
+  { id: 'cw-digital-circuit', name: 'デジタルサーキット',  origin: 'ソニックレーシングCW',    gp: 'クロスワールド', type: 'cross' },
+];
+
+// ============================================================
+// STATE
+// ============================================================
+const STORAGE_KEY = 'srcw_excluded_v1';
+const HISTORY_KEY = 'srcw_history_v1';
+
+let excluded = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+let history  = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+let mode = 'all'; // 'all' | 'main' | 'cross'
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+function saveExcluded() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...excluded]));
+}
+function saveHistory() {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+// ============================================================
+// ACTIVE COURSES
+// ============================================================
+function getActiveCourses() {
+  return COURSES.filter(c => {
+    if (excluded.has(c.id)) return false;
+    if (mode === 'main')  return c.type === 'main';
+    if (mode === 'cross') return c.type === 'cross';
+    return true;
+  });
+}
+
+// ============================================================
+// SPIN
+// ============================================================
+let spinning = false;
+function spin() {
+  const active = getActiveCourses();
+  if (active.length === 0) return;
+  if (spinning) return;
+
+  spinning = true;
+  const btn  = document.getElementById('spin-btn');
+  const ring = document.getElementById('result-ring');
+  const nameEl = document.getElementById('result-name');
+  const typeEl = document.getElementById('result-type');
+  const originEl = document.getElementById('result-origin');
+  const gpEl = document.getElementById('result-gp');
+
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  ring.classList.remove('done');
+  ring.classList.add('spinning');
+
+  // Shuffle display
+  let ticks = 0;
+  const total = 18 + Math.floor(Math.random() * 10);
+  const interval = setInterval(() => {
+    const r = active[Math.floor(Math.random() * active.length)];
+    nameEl.textContent = r.name;
+    typeEl.textContent = '';
+    originEl.textContent = r.origin;
+    gpEl.textContent = '';
+    ticks++;
+    if (ticks >= total) {
+      clearInterval(interval);
+
+      // Final pick
+      const chosen = active[Math.floor(Math.random() * active.length)];
+      ring.classList.remove('spinning');
+      ring.classList.add('done');
+      nameEl.textContent = chosen.name;
+      typeEl.textContent = chosen.type === 'main' ? '🏁 MAIN COURSE' : '🌀 CROSSWORLD';
+      typeEl.className = 'result-course-type ' + (chosen.type === 'main' ? 'type-main' : 'type-cross');
+      originEl.textContent = chosen.origin;
+      gpEl.textContent = chosen.gp + (chosen.dlc ? ' [DLC]' : '');
+
+      // Add to history
+      history.unshift({ id: chosen.id, name: chosen.name, type: chosen.type, gp: chosen.gp, origin: chosen.origin });
+      if (history.length > 10) history.pop();
+      saveHistory();
+      renderHistory();
+
+      btn.disabled = false;
+      btn.classList.remove('spinning');
+      spinning = false;
+    }
+  }, 80);
+}
+
+// ============================================================
+// MODE
+// ============================================================
+function setMode(m) {
+  mode = m;
+  ['all','main','cross'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === m);
+  });
+  const labels = {
+    all:   '全コース対象（除外コースを除く）',
+    main:  'メインコースのみ対象',
+    cross: 'クロスワールドのみ対象',
+  };
+  document.getElementById('mode-info').textContent = labels[m];
+  updateCount();
+}
+
+// ============================================================
+// TOGGLE EXCLUDE
+// ============================================================
+function toggleCourse(id) {
+  if (excluded.has(id)) excluded.delete(id);
+  else excluded.add(id);
+  saveExcluded();
+  renderCourseItem(id);
+  updateCount();
+}
+
+function toggleGroup(gp, typeFilter) {
+  const groupCourses = COURSES.filter(c => c.gp === gp && (!typeFilter || c.type === typeFilter));
+  const allExcluded = groupCourses.every(c => excluded.has(c.id));
+  groupCourses.forEach(c => {
+    if (allExcluded) excluded.delete(c.id);
+    else excluded.add(c.id);
+  });
+  saveExcluded();
+  groupCourses.forEach(c => renderCourseItem(c.id));
+  updateCount();
+}
+
+function renderCourseItem(id) {
+  const el = document.getElementById('ci-' + id);
+  if (!el) return;
+  if (excluded.has(id)) el.classList.add('excluded');
+  else el.classList.remove('excluded');
+}
+
+// ============================================================
+// COUNT
+// ============================================================
+function updateCount() {
+  const active = getActiveCourses();
+  const total  = COURSES.filter(c => {
+    if (mode === 'main')  return c.type === 'main';
+    if (mode === 'cross') return c.type === 'cross';
+    return true;
+  }).length;
+  document.getElementById('active-count').textContent = `${active.length} / ${total} コース有効`;
+
+  const warn = document.getElementById('warn-text');
+  const btn  = document.getElementById('spin-btn');
+  if (active.length === 0) {
+    warn.style.display = 'block';
+    btn.disabled = true;
+  } else {
+    warn.style.display = 'none';
+    btn.disabled = false;
+  }
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+function renderHistory() {
+  const section = document.getElementById('history-section');
+  const list    = document.getElementById('history-list');
+  if (history.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  list.innerHTML = history.map((h, i) => `
+    <div class="history-item">
+      <span class="history-num">${i + 1}</span>
+      <span class="history-name">${h.name}</span>
+      <span class="history-type ${h.type === 'main' ? 'type-main' : 'type-cross'}">${h.type === 'main' ? '🏁' : '🌀'} ${h.gp}</span>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  history = [];
+  saveHistory();
+  renderHistory();
+}
+
+// ============================================================
+// RENDER COURSE GROUPS
+// ============================================================
+function renderGroups() {
+  const mainGPs = ['ドンパグランプリ','ウィスプグランプリ','ブーグランプリ','カボチャグランプリ','コーラルグランプリ','チャオグランプリ','エッググランプリ','秘密のグランプリ','クロスオーバー1','クロスオーバー2'];
+  const crossGP = ['クロスワールド'];
+
+  const container = document.getElementById('course-groups');
+  container.innerHTML = '';
+
+  const allGPs = [...mainGPs, ...crossGP];
+  allGPs.forEach(gp => {
+    const courses = COURSES.filter(c => c.gp === gp);
+    if (courses.length === 0) return;
+
+    const isMain = courses[0].type === 'main';
+    const isDlc  = courses[0].dlc;
+
+    const groupEl = document.createElement('div');
+    groupEl.className = 'course-group';
+
+    const displayName = isDlc ? `🎮 ${gp} [DLC]` : gp;
+
+    groupEl.innerHTML = `
+      <div class="group-header">
+        <div class="group-dot ${isMain ? 'dot-main' : 'dot-cross'}"></div>
+        <div class="group-name">${displayName}</div>
+        <button class="group-toggle-all" onclick="toggleGroup('${gp}')">一括切替</button>
+      </div>
+      <div class="course-list">
+        ${courses.map(c => `
+          <div class="course-item ${excluded.has(c.id) ? 'excluded' : ''}" id="ci-${c.id}" onclick="toggleCourse('${c.id}')">
+            <div class="course-check"></div>
+            <div class="course-info">
+              <div class="course-name">${c.name}</div>
+              <div class="course-origin">${c.origin}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(groupEl);
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderGroups();
+renderHistory();
+updateCount();
+</script>
+</body>
+</html>
